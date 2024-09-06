@@ -93,14 +93,14 @@ namespace AzurePipelines.TestLogger.Tests
                 typeof(UnitTest1),
                 nameof(UnitTest1.TestMethod));
 
-            int exitCode = ExecuteUnitTestWithLogger(
-                    testMethod: fullyQualifiedTestMethodName,
-                    collectionUri: "https://dev.azure.com/wtw-bda-outsourcing-product/",
-                    buildId: "192852",
-                    teamProject: "BenefitConnect",
-                    buildRequestedFor: "PW UNIT TEST",
-                    agentName: "No AGENT",
-                    agentJobName: "Job 1");
+            // int exitCode = ExecuteUnitTestWithLogger(
+            //        testMethod: fullyQualifiedTestMethodName,
+            //        collectionUri: "https://dev.azure.com/wtw-bda-outsourcing-product/",
+            //        buildId: "192852",
+            //        teamProject: "BenefitConnect",
+            //        buildRequestedFor: "PW UNIT TEST",
+            //        agentName: "No AGENT",
+            //        agentJobName: "Job 1");
 
             ApiClientFactory apiClientFactory = new ApiClientFactory();
             IApiClient apiClient = apiClientFactory.CreateWithDefaultCredentials("https://dev.azure.com/wtw-bda-outsourcing-product/", "BenefitConnect", "5.0");

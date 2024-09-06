@@ -57,8 +57,8 @@ namespace AzurePipelines.TestLogger
             // {
             //     UseDefaultCredentials = true
             // });
-            DefaultAzureCredential credential = new DefaultAzureCredential(new DefaultAzureCredentialOptions { ExcludeManagedIdentityCredential = true });
-            string[] scopes = new[] { "https://management.azure.com/.default" }; // Replace with the appropriate scope for your API
+            DefaultAzureCredential credential = new DefaultAzureCredential(new DefaultAzureCredentialOptions { ExcludeManagedIdentityCredential = false });
+            string[] scopes = new[] { "499b84ac-1321-427f-aa17-267ca6975798/.default" }; // Replace with the appropriate scope for your API
 
             AzureAuthenticationHandler handler = new AzureAuthenticationHandler(credential, scopes)
             {
@@ -104,7 +104,7 @@ namespace AzurePipelines.TestLogger
         {
             string responseString = await SendAsync(HttpMethod.Get, $"/{testRunId}/results", null, cancellationToken).ConfigureAwait(false);
             Console.WriteLine(responseString);
-            using StringReader reader = new (responseString);
+            using StringReader reader = new(responseString);
             return JsonDeserializer.Deserialize(reader);
         }
 
@@ -112,7 +112,7 @@ namespace AzurePipelines.TestLogger
         {
             string responseString = await SendAsync(HttpMethod.Get, $"?buildIds={buildId}", null, cancellationToken).ConfigureAwait(false);
             Console.WriteLine(responseString);
-            using StringReader reader = new (responseString);
+            using StringReader reader = new(responseString);
             return JsonDeserializer.Deserialize(reader);
         }
 
