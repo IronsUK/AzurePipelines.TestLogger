@@ -15,6 +15,8 @@ namespace AzurePipelines.TestLogger.Tests
 
         public async Task Invoke(HttpContext context)
         {
+            System.ArgumentNullException.ThrowIfNull(context);
+
             // Capture the incoming request and store it
             IRequestStore requestStore = context.RequestServices.GetService<IRequestStore>();
             requestStore.Add(context.Request);

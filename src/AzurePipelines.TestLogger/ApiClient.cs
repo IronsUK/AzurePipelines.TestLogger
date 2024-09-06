@@ -8,6 +8,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Identity;
 using AzurePipelines.TestLogger.Json;
 using Microsoft.VisualStudio.TestPlatform.ObjectModel;
 
@@ -52,10 +53,19 @@ namespace AzurePipelines.TestLogger
 
         public IApiClient WithDefaultCredentials()
         {
-            _client = new HttpClient(new HttpClientHandler
+            // _client = new HttpClient(new HttpClientHandler
+            // {
+            //     UseDefaultCredentials = true
+            // });
+            DefaultAzureCredential credential = new DefaultAzureCredential(new DefaultAzureCredentialOptions { ExcludeManagedIdentityCredential = true });
+            string[] scopes = new[] { "https://management.azure.com/.default" }; // Replace with the appropriate scope for your API
+
+            AzureAuthenticationHandler handler = new AzureAuthenticationHandler(credential, scopes)
             {
-                UseDefaultCredentials = true
-            });
+                InnerHandler = new HttpClientHandler()
+            };
+
+            _client = new HttpClient(handler);
             return this;
         }
 
@@ -88,6 +98,22 @@ namespace AzurePipelines.TestLogger
             await UploadConsoleOutputsAndErrors(testRunId, testCaseTestResults, testResultsByParent, cancellationToken);
 
             await UploadTestResultFiles(testRunId, testCaseTestResults, testResultsByParent, cancellationToken);
+        }
+
+        public async Task<object> GetTestResults(int testRunId, CancellationToken cancellationToken)
+        {
+            string responseString = await SendAsync(HttpMethod.Get, $"/{testRunId}/results", null, cancellationToken).ConfigureAwait(false);
+            Console.WriteLine(responseString);
+            using StringReader reader = new (responseString);
+            return JsonDeserializer.Deserialize(reader);
+        }
+
+        public async Task<object> GetRunsByBuildId(int buildId, CancellationToken cancellationToken)
+        {
+            string responseString = await SendAsync(HttpMethod.Get, $"?buildIds={buildId}", null, cancellationToken).ConfigureAwait(false);
+            Console.WriteLine(responseString);
+            using StringReader reader = new (responseString);
+            return JsonDeserializer.Deserialize(reader);
         }
 
         public async Task UpdateTestResults(int testRunId, VstpTestRunComplete testRunComplete, CancellationToken cancellationToken)

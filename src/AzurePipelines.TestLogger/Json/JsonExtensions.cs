@@ -10,6 +10,10 @@ namespace AzurePipelines.TestLogger.Json
     {
         public static string ToJson(this IDictionary<string, object> data)
         {
+            if (data == null)
+            {
+                return null;
+            }
             StringBuilder sb = new StringBuilder();
 
             foreach (KeyValuePair<string, object> kvp in data)
@@ -91,6 +95,10 @@ namespace AzurePipelines.TestLogger.Json
         /// <returns>The indented JSON string.</returns>
         public static string Indented(this string input)
         {
+            if (input == null)
+            {
+                return null;
+            }
             int level = 0;
             StringBuilder result = new StringBuilder();
 

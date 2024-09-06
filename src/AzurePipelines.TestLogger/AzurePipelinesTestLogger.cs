@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Threading;
 using Microsoft.VisualStudio.TestPlatform.ObjectModel;
 using Microsoft.VisualStudio.TestPlatform.ObjectModel.Client;
 using Microsoft.VisualStudio.TestPlatform.ObjectModel.Logging;
@@ -28,6 +30,11 @@ namespace AzurePipelines.TestLogger
 
         public AzurePipelinesTestLogger()
         {
+            // while (!Debugger.IsAttached)
+            // {
+            //     Thread.Sleep(100); // Sleep for a short period to avoid busy-waiting
+            // }
+
             // For debugging purposes
             // System.Diagnostics.Debugger.Launch();
             _environmentVariableProvider = new EnvironmentVariableProvider();
@@ -58,12 +65,12 @@ namespace AzurePipelines.TestLogger
                 throw new ArgumentNullException(nameof(parameters));
             }
 
-            if (!GetRequiredVariable(EnvironmentVariableNames.TeamFoundationCollectionUri, out string collectionUri)
-                || !GetRequiredVariable(EnvironmentVariableNames.TeamProject, out string teamProject)
-                || !GetRequiredVariable(EnvironmentVariableNames.BuildId, out string buildId)
-                || !GetRequiredVariable(EnvironmentVariableNames.BuildRequestedFor, out string buildRequestedFor)
-                || !GetRequiredVariable(EnvironmentVariableNames.AgentName, out string agentName)
-                || !GetRequiredVariable(EnvironmentVariableNames.AgentJobName, out string jobName))
+            if (!GetRequiredVariable(EnvironmentVariableNames.TeamFoundationCollectionUri, parameters, out string collectionUri)
+                || !GetRequiredVariable(EnvironmentVariableNames.TeamProject, parameters, out string teamProject)
+                || !GetRequiredVariable(EnvironmentVariableNames.BuildId, parameters, out string buildId)
+                || !GetRequiredVariable(EnvironmentVariableNames.BuildRequestedFor, parameters, out string buildRequestedFor)
+                || !GetRequiredVariable(EnvironmentVariableNames.AgentName, parameters, out string agentName)
+                || !GetRequiredVariable(EnvironmentVariableNames.AgentJobName, parameters, out string jobName))
             {
                 return;
             }
@@ -83,7 +90,7 @@ namespace AzurePipelines.TestLogger
                 {
                     _apiClient = _apiClientFactory.CreateWithDefaultCredentials(collectionUri, teamProject, apiVersion);
                 }
-                else if (GetRequiredVariable(EnvironmentVariableNames.AccessToken, out string accessToken))
+                else if (GetRequiredVariable(EnvironmentVariableNames.AccessToken, parameters, out string accessToken))
                 {
                     _apiClient = _apiClientFactory.CreateWithAccessToken(accessToken, collectionUri, teamProject, apiVersion);
                 }
@@ -123,9 +130,13 @@ namespace AzurePipelines.TestLogger
             events.TestRunComplete += TestRunCompleteHandler;
         }
 
-        private bool GetRequiredVariable(string name, out string value)
+        private bool GetRequiredVariable(string name, IDictionary<string, string> parameters, out string value)
         {
             value = _environmentVariableProvider.GetEnvironmentVariable(name);
+            if (string.IsNullOrEmpty(value) && parameters.TryGetValue(name, out value))
+            {
+                return true;
+            }
             if (string.IsNullOrEmpty(value))
             {
                 Console.WriteLine($"AzurePipelines.TestLogger: Not an Azure Pipelines test run, environment variable {name} not set.");

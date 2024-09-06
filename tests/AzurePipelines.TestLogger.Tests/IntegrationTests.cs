@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
@@ -20,7 +21,7 @@ namespace AzurePipelines.TestLogger.Tests
     {
         private string _vsTestExeFilePath;
         private string _sampleUnitTestProjectDllFilePath;
-        private string _vsTestLoggerDllPath;
+        private string _azurePipelinesTestLoggerAssemblyPath;
 
         [OneTimeSetUp]
         public void SetUpFixture()
@@ -44,12 +45,12 @@ namespace AzurePipelines.TestLogger.Tests
 #endif
 
             string rootRepositoryPath = GetRootRepositoryPath();
-            _sampleUnitTestProjectDllFilePath = Path.Combine(rootRepositoryPath, $@"tests\SampleUnitTestProject\bin\{configuration}\netcoreapp2.1\SampleUnitTestProject.dll");
-            _vsTestLoggerDllPath = Path.Combine(rootRepositoryPath, $@"src\AzurePipelines.TestLogger\bin\{configuration}\netstandard1.5");
+            _sampleUnitTestProjectDllFilePath = Path.Combine(rootRepositoryPath, "tests", "SampleUnitTestProject", "bin", configuration, "net8.0", "SampleUnitTestProject.dll");
+            _azurePipelinesTestLoggerAssemblyPath = Path.Combine(rootRepositoryPath, "src", "AzurePipelines.TestLogger", "bin", configuration, "net8.0");
         }
 
         [Test]
-        public void ExecuteTest_WithInvalidAzureDevopsCollectionUri_ContinuesTestExecution()
+        public void ExecuteTestWithInvalidAzureDevopsCollectionUriContinuesTestExecution()
         {
             // Given
             string fullyQualifiedTestMethodName = GetFullyQualifiedTestMethodName(
@@ -68,7 +69,7 @@ namespace AzurePipelines.TestLogger.Tests
         }
 
         [Test]
-        public async Task ExecuteTest_WithDataTestMethod_LogsEachDataRow()
+        public async Task ExecuteTestWithDataTestMethodLogsEachDataRow()
         {
             // Given
             string fullyQualifiedTestMethodName = GetFullyQualifiedTestMethodName(
@@ -82,6 +83,30 @@ namespace AzurePipelines.TestLogger.Tests
             // Then
             Assert.AreEqual(0, testResults.ExitCode);
             Assert.AreEqual(2, testResults.CapturedRequests.Count);
+        }
+
+        [Test]
+        public async Task ExecuteEndToEndTest()
+        {
+            // Given
+            string fullyQualifiedTestMethodName = GetFullyQualifiedTestMethodName(
+                typeof(UnitTest1),
+                nameof(UnitTest1.TestMethod));
+
+            int exitCode = ExecuteUnitTestWithLogger(
+                    testMethod: fullyQualifiedTestMethodName,
+                    collectionUri: "https://dev.azure.com/wtw-bda-outsourcing-product/",
+                    buildId: "192852",
+                    teamProject: "BenefitConnect",
+                    buildRequestedFor: "PW UNIT TEST",
+                    agentName: "No AGENT",
+                    agentJobName: "Job 1");
+
+            ApiClientFactory apiClientFactory = new ApiClientFactory();
+            IApiClient apiClient = apiClientFactory.CreateWithDefaultCredentials("https://dev.azure.com/wtw-bda-outsourcing-product/", "BenefitConnect", "5.0");
+            object result = await apiClient.GetRunsByBuildId(192852, CancellationToken.None);
+
+            Assert.IsNotNull(result);
         }
 
         private async Task<TestResults> StartServerAndExecuteUnitTestWithLoggerAsync(
@@ -167,10 +192,11 @@ namespace AzurePipelines.TestLogger.Tests
 
             List<string> arguments = new List<string>
             {
+                "test",
                 $"\"{_sampleUnitTestProjectDllFilePath}\"",
-                $"/Tests:{testMethod}",
-                $"/logger:\"{string.Join(";", loggerArguments)}\"",
-                $"/TestAdapterPath:\"{_vsTestLoggerDllPath}\""
+                $"--filter \"FullyQualifiedName={testMethod}\"",
+                $"--logger \"{string.Join(";", loggerArguments)}\"",
+                $"--test-adapter-path \"{_azurePipelinesTestLoggerAssemblyPath}\""
             };
 
             Dictionary<string, string> environmentVariables = new Dictionary<string, string>
@@ -184,7 +210,7 @@ namespace AzurePipelines.TestLogger.Tests
             };
 
             ProcessRunner processRunner = new ProcessRunner();
-            return processRunner.Run(_vsTestExeFilePath, arguments, environmentVariables);
+            return processRunner.Run("dotnet", arguments, environmentVariables);
         }
 
         private static string GetRootRepositoryPath()
